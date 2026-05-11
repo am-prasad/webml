@@ -1,4 +1,5 @@
 backend/ecogrid
 backend/model.pkl
 backend/preprocessor.joblib
-
+/.gitignore
+__pycache__/

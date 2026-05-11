@@ -117,10 +117,13 @@ async function fetchMetrics() {
 async function handlePrediction(event) {
     event.preventDefault();
 
-    const fuelflow = parseFloat(document.getElementById("fuelflow").value);
-    const boilerload = parseFloat(document.getElementById("boilerload").value);
-    const ambient_temp = parseFloat(document.getElementById("ambient_temp").value);
-    const capture_on = parseInt(document.getElementById("capture_on").value);
+    const fuel_flow = parseFloat(document.getElementById("fuel_flow").value);
+
+const boiler_load = parseFloat(document.getElementById("boiler_load").value);
+
+const ambient_temp = parseFloat(document.getElementById("ambient_temp").value);
+
+const carbon_capture = parseInt(document.getElementById("carbon_capture").value);
 
     try {
         const response = await fetch(`${API_BASE_URL}/predict`, {
@@ -129,11 +132,11 @@ async function handlePrediction(event) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                fuelflow,
-                boilerload,
-                ambient_temp,
-                capture_on
-            })
+    fuel_flow,
+    boiler_load,
+    ambient_temp,
+    carbon_capture
+})
         });
 
         const data = await response.json();
