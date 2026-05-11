@@ -1,0 +1,11 @@
+{
+    "algorithm": "Linear Regression",
+    "train_r2_score": 0.6453,
+    "test_r2_score": 0.6477,
+    "train_mae": 1.3977,
+    "test_mae": 1.3993,
+    "train_rmse": 1.5941,
+    "test_rmse": 1.5936,
+    "test_mse": 2.5394,
+    "test_mape": 0.1666
+}

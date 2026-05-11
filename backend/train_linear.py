@@ -6,14 +6,13 @@ import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     r2_score,
     mean_absolute_error,
     mean_squared_error,
     mean_absolute_percentage_error
 )
-
-import lightgbm as lgb
 
 
 def generate_synthetic_data(num_samples=3000):
@@ -26,8 +25,11 @@ def generate_synthetic_data(num_samples=3000):
     )
 
     fuel_flow = np.random.uniform(0, 200, num_samples)
+
     boiler_load = np.random.uniform(0, 500, num_samples)
+
     ambient_temp = np.random.uniform(-20, 80, num_samples)
+
     carbon_capture = np.random.choice([0, 1], num_samples)
 
     plant_factor = []
@@ -93,15 +95,12 @@ def train_model(csv_path=None):
         print("Generating synthetic dataset...")
         df = generate_synthetic_data()
 
-    plant_mapping = {
-        "Coal": 0,
-        "Gas": 1,
-        "Nuclear": 2,
-        "Solar": 3,
-        "Biomass": 4
-    }
-
-    df["plant_type"] = df["plant_type"].map(plant_mapping)
+    df["plant_type"] = (
+    pd.to_numeric(
+        df["plant_type"],
+        errors="coerce"
+    ).fillna(0).astype(int)
+)
 
     feature_columns = [
         "plant_type",
@@ -112,6 +111,7 @@ def train_model(csv_path=None):
     ]
 
     X = df[feature_columns]
+
     y = df["co2_emission"]
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -131,6 +131,7 @@ def train_model(csv_path=None):
     ]
 
     X_train_scaled = X_train.copy()
+
     X_test_scaled = X_test.copy()
 
     X_train_scaled[numeric_cols] = scaler.fit_transform(
@@ -141,22 +142,19 @@ def train_model(csv_path=None):
         X_test[numeric_cols]
     )
 
-    print("Training LightGBM Regressor...")
+    print("Training Linear Regression Model...")
 
-    model = lgb.LGBMRegressor(
-        n_estimators=300,
-        learning_rate=0.05,
-        max_depth=10,
-        random_state=42
-    )
+    model = LinearRegression()
 
     model.fit(X_train_scaled, y_train)
 
     train_preds = model.predict(X_train_scaled)
+
     test_preds = model.predict(X_test_scaled)
 
     metrics = {
-        "algorithm": "LightGBM Regressor",
+
+        "algorithm": "Linear Regression",
 
         "train_r2_score":
             round(float(r2_score(y_train, train_preds)), 4),
@@ -171,41 +169,85 @@ def train_model(csv_path=None):
             round(float(mean_absolute_error(y_test, test_preds)), 4),
 
         "train_rmse":
-            round(float(np.sqrt(mean_squared_error(y_train, train_preds))), 4),
+            round(
+                float(
+                    np.sqrt(
+                        mean_squared_error(
+                            y_train,
+                            train_preds
+                        )
+                    )
+                ),
+                4
+            ),
 
         "test_rmse":
-            round(float(np.sqrt(mean_squared_error(y_test, test_preds))), 4),
+            round(
+                float(
+                    np.sqrt(
+                        mean_squared_error(
+                            y_test,
+                            test_preds
+                        )
+                    )
+                ),
+                4
+            ),
 
         "test_mse":
-            round(float(mean_squared_error(y_test, test_preds)), 4),
+            round(
+                float(
+                    mean_squared_error(
+                        y_test,
+                        test_preds
+                    )
+                ),
+                4
+            ),
 
         "test_mape":
-            round(float(mean_absolute_percentage_error(y_test, test_preds)), 4)
+            round(
+                float(
+                    mean_absolute_percentage_error(
+                        y_test,
+                        test_preds
+                    )
+                ),
+                4
+            )
     }
 
-    print("\n===== MODEL METRICS =====")
+    print("\n===== LINEAR REGRESSION METRICS =====")
 
     for k, v in metrics.items():
+
         print(f"{k}: {v}")
 
-    joblib.dump(model, "model.pkl")
+    joblib.dump(model, "linear_model.pkl")
 
     preprocessor = {
         "scaler": scaler,
         "feature_columns": feature_columns,
-        "plant_mapping": plant_mapping
+        
     }
 
-    joblib.dump(preprocessor, "preprocessor.joblib")
+    joblib.dump(
+        preprocessor,
+        "linear_preprocessor.joblib"
+    )
 
-    with open("metadata.json", "w") as f:
+    with open(
+        "linear_metadata.json",
+        "w"
+    ) as f:
+
         json.dump(metrics, f, indent=4)
 
-    print("\n✅ Training completed successfully!")
+    print("\n✅ Linear Regression Training Completed")
 
 
 if __name__ == "__main__":
 
-    csv_file_path = r"data\processed_synthetic_data_30days.csv"
+    csv_file_path = r"data/processed_synthetic_data_30days.csv"
 
     train_model(csv_path=csv_file_path)
