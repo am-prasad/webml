@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoGridAI - Industrial Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🌱 EcoGridAI</h1>
+            <p>Advanced ML Analytics for CO₂ Emissions Prediction</p>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Panel: Input Form -->
+            <section class="input-panel">
+                <h2>Prediction Engine</h2>
+                <form id="predictionForm">
+                    <div class="form-group">
+                        <label for="fuelflow">Fuel Flow (0-200):</label>
+                        <input type="number" id="fuelflow" min="0" max="200" step="0.1" value="100" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="boilerload">Boiler Load (0-500):</label>
+                        <input type="number" id="boilerload" min="0" max="500" step="0.1" value="250" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ambient_temp">Ambient Temp (-20 to 80°C):</label>
+                        <input type="number" id="ambient_temp" min="-20" max="80" step="0.1" value="25" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="capture_on">Capture On:</label>
+                        <select id="capture_on">
+                            <option value="0">Off</option>
+                            <option value="1">On</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-predict">Generate Prediction</button>
+                </form>
+
+                <!-- Metrics Display -->
+                <div class="metrics-box">
+                    <h3>Model Performance</h3>
+                    <div class="metric-item">
+                        <span>Algorithm:</span>
+                        <strong id="algorithm">Loading...</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span>R² Score:</span>
+                        <strong id="r2Score">-</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span>MAE:</span>
+                        <strong id="mae">-</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span>RMSE:</span>
+                        <strong id="rmse">-</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center Panel: Gauge Chart -->
+            <section class="chart-panel gauge-panel">
+                <h2>CO₂ Prediction</h2>
+                <div class="gauge-container">
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+                <div class="prediction-value">
+                    <p>Predicted CO₂:</p>
+                    <h3 id="predictionValue">0.0000</h3>
+                </div>
+            </section>
+
+            <!-- Right Panel: Comparison Chart -->
+            <section class="chart-panel comparison-panel">
+                <h2>Train vs Test Performance</h2>
+                <canvas id="comparisonChart"></canvas>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 EcoGridAI | High-Performance ML Analytics</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
