@@ -1,11 +1,11 @@
 {
     "algorithm": "LightGBM Regressor",
-    "train_r2_score": 0.6822,
-    "test_r2_score": 0.6746,
-    "train_mae": 1.2663,
-    "test_mae": 1.2852,
-    "train_rmse": 1.5089,
-    "test_rmse": 1.5313,
-    "test_mse": 2.3449,
-    "test_mape": 0.1536
+    "train_r2_score": 0.9916,
+    "test_r2_score": 0.9909,
+    "train_mae": 0.1852,
+    "test_mae": 0.1926,
+    "train_rmse": 0.246,
+    "test_rmse": 0.2561,
+    "test_mse": 0.0656,
+    "test_mape": 0.024
 }

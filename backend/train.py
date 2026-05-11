@@ -16,36 +16,65 @@ from sklearn.metrics import (
 import lightgbm as lgb
 
 
-def generate_synthetic_data(num_samples=2000):
-    """Generate synthetic thermal plant data."""
+def generate_synthetic_data(num_samples=3000):
 
     np.random.seed(42)
+
+    plant_types = np.random.choice(
+        ["Coal", "Gas", "Nuclear", "Solar", "Biomass"],
+        num_samples
+    )
 
     fuel_flow = np.random.uniform(0, 200, num_samples)
     boiler_load = np.random.uniform(0, 500, num_samples)
     ambient_temp = np.random.uniform(-20, 80, num_samples)
     carbon_capture = np.random.choice([0, 1], num_samples)
 
+    plant_factor = []
+
+    for plant in plant_types:
+
+        if plant == "Coal":
+            plant_factor.append(35)
+
+        elif plant == "Gas":
+            plant_factor.append(22)
+
+        elif plant == "Biomass":
+            plant_factor.append(15)
+
+        elif plant == "Nuclear":
+            plant_factor.append(5)
+
+        else:
+            plant_factor.append(2)
+
+    plant_factor = np.array(plant_factor)
+
     base_co2 = (
-        (fuel_flow * 0.15)
-        + (boiler_load * 0.05)
-        - (ambient_temp * 0.01)
+        (fuel_flow * 0.25)
+        + (boiler_load * 0.12)
+        - (ambient_temp * 0.02)
+        + plant_factor
     )
 
-    capture_reduction = carbon_capture * 15.0
+    capture_reduction = carbon_capture * 20
 
     co2_emission = np.clip(
-        base_co2 - capture_reduction + np.random.normal(0, 2, num_samples),
+        base_co2
+        - capture_reduction
+        + np.random.normal(0, 3, num_samples),
         0,
-        50
+        150
     )
 
     df = pd.DataFrame({
-        'fuel_flow': fuel_flow,
-        'boiler_load': boiler_load,
-        'ambient_temp': ambient_temp,
-        'carbon_capture': carbon_capture,
-        'co2_emission': co2_emission
+        "plant_type": plant_types,
+        "fuel_flow": fuel_flow,
+        "boiler_load": boiler_load,
+        "ambient_temp": ambient_temp,
+        "carbon_capture": carbon_capture,
+        "co2_emission": co2_emission
     })
 
     return df
@@ -53,46 +82,37 @@ def generate_synthetic_data(num_samples=2000):
 
 def train_model(csv_path=None):
 
-    # Load data
     if csv_path and os.path.exists(csv_path):
 
         print(f"Loading data from {csv_path}")
 
         df = pd.read_csv(csv_path)
 
-        if 'carbon_capture' in df.columns:
-            df['carbon_capture'] = df['carbon_capture'].astype(int)
-
     else:
-        print("CSV not found. Using synthetic data.")
-        df = generate_synthetic_data(3000)
 
-    # Required columns
-    required_cols = [
-        'fuel_flow',
-        'boiler_load',
-        'ambient_temp',
-        'carbon_capture',
-        'co2_emission'
-    ]
+        print("Generating synthetic dataset...")
+        df = generate_synthetic_data()
 
-    for col in required_cols:
-        if col not in df.columns:
-            raise ValueError(f"Missing required column: {col}")
+    plant_mapping = {
+        "Coal": 0,
+        "Gas": 1,
+        "Nuclear": 2,
+        "Solar": 3,
+        "Biomass": 4
+    }
 
-    # Features and target
+    df["plant_type"] = df["plant_type"].map(plant_mapping)
+
     feature_columns = [
-        'fuel_flow',
-        'boiler_load',
-        'ambient_temp',
-        'carbon_capture'
+        "plant_type",
+        "fuel_flow",
+        "boiler_load",
+        "ambient_temp",
+        "carbon_capture"
     ]
 
     X = df[feature_columns]
-    y = df['co2_emission']
-
-    # Train-test split
-    print("Splitting dataset...")
+    y = df["co2_emission"]
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -101,15 +121,13 @@ def train_model(csv_path=None):
         random_state=42
     )
 
-    # Scaling
-    print("Scaling features...")
-
     scaler = StandardScaler()
 
     numeric_cols = [
-        'fuel_flow',
-        'boiler_load',
-        'ambient_temp'
+        "plant_type",
+        "fuel_flow",
+        "boiler_load",
+        "ambient_temp"
     ]
 
     X_train_scaled = X_train.copy()
@@ -123,23 +141,20 @@ def train_model(csv_path=None):
         X_test[numeric_cols]
     )
 
-    # Model
-    print("Training LightGBM model...")
+    print("Training LightGBM Regressor...")
 
     model = lgb.LGBMRegressor(
-        n_estimators=200,
+        n_estimators=300,
         learning_rate=0.05,
-        max_depth=8,
+        max_depth=10,
         random_state=42
     )
 
     model.fit(X_train_scaled, y_train)
 
-    # Predictions
     train_preds = model.predict(X_train_scaled)
     test_preds = model.predict(X_test_scaled)
 
-    # Metrics
     metrics = {
         "algorithm": "LightGBM Regressor",
 
@@ -173,14 +188,12 @@ def train_model(csv_path=None):
     for k, v in metrics.items():
         print(f"{k}: {v}")
 
-    # Save model
-    print("\nSaving artifacts...")
-
     joblib.dump(model, "model.pkl")
 
     preprocessor = {
         "scaler": scaler,
-        "feature_columns": feature_columns
+        "feature_columns": feature_columns,
+        "plant_mapping": plant_mapping
     }
 
     joblib.dump(preprocessor, "preprocessor.joblib")

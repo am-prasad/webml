@@ -115,44 +115,82 @@ async function fetchMetrics() {
 
 // Handle prediction form submission
 async function handlePrediction(event) {
+
     event.preventDefault();
 
-    const fuel_flow = parseFloat(document.getElementById("fuel_flow").value);
+    const plant_type =
+        document.getElementById("plant_type").value;
 
-const boiler_load = parseFloat(document.getElementById("boiler_load").value);
+    const fuel_flow =
+        parseFloat(
+            document.getElementById("fuel_flow").value
+        );
 
-const ambient_temp = parseFloat(document.getElementById("ambient_temp").value);
+    const boiler_load =
+        parseFloat(
+            document.getElementById("boiler_load").value
+        );
 
-const carbon_capture = parseInt(document.getElementById("carbon_capture").value);
+    const ambient_temp =
+        parseFloat(
+            document.getElementById("ambient_temp").value
+        );
+
+    const carbon_capture =
+        parseInt(
+            document.getElementById("carbon_capture").value
+        );
 
     try {
-        const response = await fetch(`${API_BASE_URL}/predict`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-    fuel_flow,
-    boiler_load,
-    ambient_temp,
-    carbon_capture
-})
-        });
+
+        const response = await fetch(
+            `${API_BASE_URL}/predict`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    plant_type,
+                    fuel_flow,
+                    boiler_load,
+                    ambient_temp,
+                    carbon_capture
+                })
+            }
+        );
 
         const data = await response.json();
 
         if (data.status === "success") {
-            const prediction = data.prediction;
-            
-            // Update prediction value
-            document.getElementById("predictionValue").textContent = prediction.toFixed(4);
 
-            // Update gauge chart
-            const percentage = Math.min((prediction / 500) * 100, 100);
-            gaugeChart.data.datasets[0].data = [percentage, 100 - percentage];
+            const prediction = data.prediction;
+
+            document.getElementById(
+                "predictionValue"
+            ).textContent = prediction.toFixed(4);
+
+            const percentage =
+                Math.min(
+                    (prediction / 150) * 100,
+                    100
+                );
+
+            gaugeChart.data.datasets[0].data = [
+                percentage,
+                100 - percentage
+            ];
+
             gaugeChart.update();
         }
+
     } catch (error) {
-        console.error("Error making prediction:", error);
+
+        console.error(
+            "Prediction Error:",
+            error
+        );
     }
 }
