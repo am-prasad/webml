@@ -2,20 +2,20 @@
 
 EcoGridAI is a full-stack, machine-learning-powered web application designed to predict and monitor **CO₂ emissions from thermal power plants in real time**.
 
-By analyzing operational parameters such as fuel flow, boiler load, ambient temperature, and carbon capture status, the system provides actionable environmental insights for sustainability monitoring and compliance analysis.
+By analyzing industrial operational parameters such as plant type, fuel flow, boiler load, ambient temperature, and carbon capture status, the system provides actionable environmental insights for sustainability monitoring and compliance analysis.
 
 ---
 
 #  Features
 
-*  Real-time CO₂ emission prediction
-*  Machine Learning powered by LightGBM
-*  Interactive frontend dashboard using Chart.js
-*  FastAPI REST API backend
-*  Performance metrics visualization
-*  Carbon capture impact analysis
-*  Industrial operational parameter simulation
-*  Lightweight frontend with zero framework dependencies
+* Real-time CO₂ emission prediction
+* Machine Learning powered by Linear Regression
+* Interactive frontend dashboard using Chart.js
+* FastAPI REST API backend
+* Performance metrics visualization
+* Carbon capture impact analysis
+* Multi-plant industrial simulation
+* Lightweight frontend with zero framework dependencies
 
 ---
 
@@ -29,8 +29,8 @@ By analyzing operational parameters such as fuel flow, boiler load, ambient temp
 
 ## Machine Learning
 
-* LightGBM
 * Scikit-Learn
+* Linear Regression
 * Pandas
 * NumPy
 * Joblib
@@ -46,14 +46,18 @@ By analyzing operational parameters such as fuel flow, boiler load, ambient temp
 
 #  Machine Learning Architecture
 
-The predictive engine uses a **Light Gradient Boosting Machine (LightGBM) Regressor**.
+The predictive engine uses a **Linear Regression model**
+to estimate CO₂ emissions from industrial operational parameters.
 
-LightGBM is selected because of its:
+Linear Regression was selected in Phase 1 because of its:
 
+* Simplicity and interpretability
 * Fast training performance
-* High efficiency on large datasets
-* Strong handling of non-linear industrial relationships
-* Better optimization compared to traditional ensemble methods like Random Forests
+* Low computational overhead
+* Strong baseline regression capability
+* Easy explainability for industrial analytics
+
+The model predicts continuous CO₂ emission values using supervised learning regression techniques.
 
 ---
 
@@ -61,26 +65,35 @@ LightGBM is selected because of its:
 
 The model accepts the following operational parameters:
 
-| Feature          | Description            | Unit    |
-| ---------------- | ---------------------- | ------- |
-| `fuel_flow`      | Fuel consumption rate  | tons/hr |
-| `boiler_load`    | Power plant load       | MW      |
-| `ambient_temp`   | External temperature   | °C      |
+| Feature | Description | Unit |
+|---|---|---|
+| `plant_type` | Type of thermal plant | Encoded Integer |
+| `fuel_flow` | Fuel consumption rate | tons/hr |
+| `boiler_load` | Power plant operational load | MW |
+| `ambient_temp` | External environmental temperature | °C |
 | `carbon_capture` | Carbon capture enabled | Boolean |
 
 ---
 
-#  Data Pipeline
+
+
+
+
+# Data Pipeline
 
 ## 1. Feature Ingestion
 
-Operational sensor data is collected from the thermal plant environment.
+Operational industrial sensor parameters are collected from the plant environment.
+
+---
 
 ## 2. Data Preprocessing
 
-Continuous numeric features are normalized using Scikit-Learn's `StandardScaler`.
+Continuous numeric features are standardized using Scikit-Learn's `StandardScaler`.
 
-This ensures that features with larger magnitudes do not dominate the optimization process.
+This improves regression stability and ensures balanced feature contribution during model optimization.
+
+---
 
 ## 3. Train-Test Split
 
@@ -89,24 +102,25 @@ The dataset is divided into:
 * **80% Training Data**
 * **20% Testing Data**
 
-This helps evaluate model generalization on unseen operational conditions.
+This enables proper evaluation on unseen industrial operating conditions.
 
 ---
+# Model Evaluation Metrics
 
-#  Model Evaluation Metrics
-
-To evaluate prediction quality, the backend computes multiple regression metrics.
+To evaluate regression performance, multiple statistical metrics are computed.
 
 ---
 
 ## 1. Mean Absolute Error (MAE)
 
-Measures the average magnitude of prediction errors.
+Measures average prediction error magnitude.
 
 $$
-\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} \left| y_i - \hat{y}_i \right|
+\text{MAE} =
+\frac{1}{n}
+\sum_{i=1}^{n}
+|y_i - \hat{y}_i|
 $$
-
 
 ---
 
@@ -115,9 +129,13 @@ $$
 Penalizes larger prediction errors more heavily.
 
 $$
-\text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2}
+\text{RMSE} =
+\sqrt{
+\frac{1}{n}
+\sum_{i=1}^{n}
+(y_i - \hat{y}_i)^2
+}
 $$
-
 
 ---
 
@@ -126,46 +144,62 @@ $$
 Represents how much variance in emissions is explained by the model.
 
 $$
-R^2 = 1 - \frac{\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}{\sum_{i=1}^{n}(y_i - \bar{y})^2}
+R^2 =
+1 -
+\frac{
+\sum_{i=1}^{n}
+(y_i - \hat{y}_i)^2
+}{
+\sum_{i=1}^{n}
+(y_i - \bar{y})^2
+}
 $$
-
 
 ---
 
 ## 4. Mean Absolute Percentage Error (MAPE)
 
-Measures prediction error in percentage form.
+Measures prediction error percentage.
 
 $$
-\text{MAPE} = \frac{100\%}{n} \sum_{i=1}^{n} \left| \frac{y_i - \hat{y}_i}{y_i} \right|
+\text{MAPE} =
+\frac{100}{n}
+\sum_{i=1}^{n}
+\left|
+\frac{
+y_i - \hat{y}_i
+}{
+y_i
+}
+\right|
 $$
-
 
 ---
 
 Where:
 
-* (y_i) = Actual value
-* (\hat{y}_i) = Predicted value
-* (\bar{y}) = Mean actual value
-* (n) = Number of samples
+* $y_i$ = Actual value
+* $\hat{y}_i$ = Predicted value
+* $\bar{y}$ = Mean actual value
+* $n$ = Number of samples
 
 ---
 
-# Model Optimization
+#  Model Optimization
 
 ## Overfitting (High Variance)
 
 ### Problem
 
-The model memorizes training data but performs poorly on unseen data.
+The regression model performs well on training data but poorly on unseen industrial conditions.
 
 ### Mitigations
 
-* `max_depth=8`
-* Strict train-test separation
-* Early stopping (optional)
-* Regularized tree growth
+* Proper train-test split
+* Feature scaling
+* Balanced synthetic dataset generation
+* Missing value handling
+* Noise reduction during preprocessing
 
 ---
 
@@ -173,29 +207,61 @@ The model memorizes training data but performs poorly on unseen data.
 
 ### Problem
 
-The model fails to capture the underlying relationship between operational parameters and emissions.
+Linear Regression may not fully capture highly nonlinear industrial emission behavior.
 
 ### Mitigations
 
-* Using LightGBM instead of linear regression
-* `learning_rate=0.05`
-* `n_estimators=200`
-* Feature scaling and tuning
+* Feature engineering
+* Plant-type operational modeling
+* Proper feature scaling
+* Future migration to advanced boosting regression models
 
 ---
 
-# 📂 Project Structure
+# Project Evolution
+
+## Phase 1
+
+Baseline implementation using **Linear Regression**
+for industrial CO₂ emission prediction.
+
+### Goals
+
+* Establish predictive pipeline
+* Validate industrial feature relationships
+* Build real-time dashboard
+* Create regression baseline metrics
+
+---
+
+## Phase 2
+
+Planned migration to advanced regression systems such as:
+
+* LightGBM Regressor
+* XGBoost Regressor
+
+### Expected Improvements
+
+* Better nonlinear learning
+* Higher prediction accuracy
+* Improved scalability
+* Enhanced industrial deployment capability
+
+---
+
+#  Project Structure
 
 ```bash
 EcoGridAI/
 │
 ├── backend/
 │   ├── main.py
-│   ├── train.py
+│   ├── train_linear.py
 │   ├── requirements.txt
-│   ├── model.pkl
-│   ├── preprocessor.joblib
-│   └── metadata.json
+│   ├── linear_model.pkl
+│   ├── linear_preprocessor.joblib
+│   └── linear_metadata.json
 │
 ├── frontend/
 │   ├── index.html
@@ -206,13 +272,13 @@ EcoGridAI/
 ```
 
 ---
+# Installation & Setup
 
-#  Installation & Setup
-
-## 1. Clone the Repository
+## 1. Clone Repository
 
 ```bash
 git clone https://github.com/am-prasad/webml.git
+
 cd webml
 ```
 
@@ -220,7 +286,7 @@ cd webml
 
 ## 2. Backend Setup
 
-Navigate to the backend directory:
+Navigate to backend directory:
 
 ```bash
 cd backend
@@ -236,23 +302,23 @@ pip install -r requirements.txt
 
 #  Train the Model
 
-Generate the trained model and preprocessing artifacts:
+Generate trained regression artifacts:
 
 ```bash
-python train.py
+python train_linear.py
 ```
 
 Generated files:
 
-* `model.pkl`
-* `preprocessor.joblib`
-* `metadata.json`
+* `linear_model.pkl`
+* `linear_preprocessor.joblib`
+* `linear_metadata.json`
 
 ---
 
-# ▶️ Run the API Server
+#  Run API Server
 
-Start the FastAPI server:
+Start FastAPI backend:
 
 ```bash
 uvicorn main:app --reload
@@ -266,7 +332,7 @@ http://127.0.0.1:8000
 
 ---
 
-# 🌐 Launch the Frontend
+#  Launch Frontend
 
 Open:
 
@@ -276,49 +342,56 @@ frontend/index.html
 
 in any modern browser.
 
-No npm installation or frontend build tools are required.
+No frontend build tools or npm setup required.
 
 ---
 
-# 📡 API Endpoint
+#  API Endpoint
 
 ## Predict CO₂ Emissions
 
 ### POST `/predict`
 
-### Request Example
+---
+
+## Request Example
 
 ```json
 {
-  "fuel_flow": 120,
-  "boiler_load": 450,
-  "ambient_temp": 32,
+  "plant_type": 0,
+  "fuel_flow": 180,
+  "boiler_load": 420,
+  "ambient_temp": 34,
   "carbon_capture": 1
 }
 ```
 
-### Response Example
+---
+
+## Response Example
 
 ```json
 {
-  "predicted_co2": 18.74
+  "prediction": 92.4418,
+  "status": "success"
 }
 ```
 
 ---
 
-# 📈 Future Enhancements
+#  Future Enhancements
 
-*  Real industrial IoT integration
-*  Cloud deployment
-* Advanced analytics dashboard
-*  Historical emissions reporting
+* Real industrial IoT integration
+* Cloud deployment
+* Historical emissions analytics
+* Advanced industrial dashboards
+* Live environmental compliance tracking
 * Deep learning experimentation
-*  Live environmental compliance monitoring
+* Smart industrial alert systems
 
 ---
 
-# 🤝 Contributing
+#  Contributing
 
 Contributions are welcome.
 
@@ -327,8 +400,5 @@ Contributions are welcome.
 3. Commit changes
 4. Submit a pull request
 
-
-
-
-
+---
 

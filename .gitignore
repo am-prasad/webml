@@ -3,3 +3,5 @@ backend/model.pkl
 backend/preprocessor.joblib
 /.gitignore
 __pycache__/
+backend/linear_model.pkl
+backend/linear_preprocessor.joblib
