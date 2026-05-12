@@ -128,19 +128,16 @@ $$
 The synthetic dataset generation process models industrial emissions using:
 
 $$
-CO_2 =
-(0.25 \times FuelFlow)
-+
-(0.12 \times BoilerLoad)
--
-(0.02 \times AmbientTemp)
-+
-PlantFactor
--
-(20 \times CarbonCapture)
-+
-Noise
+\begin{aligned}
+CO_2 ={} & (0.25 \times \text{FuelFlow}) \\
+& + (0.12 \times \text{BoilerLoad}) \\
+& - (0.02 \times \text{AmbientTemp}) \\
+& + \text{PlantFactor} \\
+& - (20 \times \text{CarbonCapture}) \\
+& + \text{Noise}
+\end{aligned}
 $$
+
 
 Where:
 
