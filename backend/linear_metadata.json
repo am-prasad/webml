@@ -1,5 +1,5 @@
 {
-    "algorithm": "Linear Regression",
+    "algorithm": "Multiple Linear Regression",
     "train_r2_score": 0.6453,
     "test_r2_score": 0.6477,
     "train_mae": 1.3977,

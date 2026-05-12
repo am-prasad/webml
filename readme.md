@@ -49,7 +49,7 @@ By analyzing industrial operational parameters such as plant type, fuel flow, bo
 The predictive engine uses a **Linear Regression model**
 to estimate CO₂ emissions from industrial operational parameters.
 
-Linear Regression was selected in Phase 1 because of its:
+Multiple Linear Regression was selected in Phase 1 because of its:
 
 * Simplicity and interpretability
 * Fast training performance
@@ -74,7 +74,140 @@ The model accepts the following operational parameters:
 | `carbon_capture` | Carbon capture enabled | Boolean |
 
 ---
+# Regression Equation
 
+The Multiple Linear Regression model predicts CO₂ emissions
+using a weighted combination of multiple industrial operational features.
+
+The general Multiple Linear Regression equation is:
+
+$$
+Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \beta_3X_3 + \cdots + \beta_nX_n
+$$
+
+Where:
+
+* $Y$ = Predicted CO₂ emission
+* $\beta_0$ = Intercept
+* $\beta_n$ = Regression coefficients
+* $X_n$ = Independent operational variables
+
+---
+
+# EcoGridAI Regression Equation
+
+The project uses the following industrial operational parameters:
+
+* Plant Type
+* Fuel Flow
+* Boiler Load
+* Ambient Temperature
+* Carbon Capture Status
+
+The regression relationship can be represented as:
+
+$$
+CO_2 =
+\beta_0
++
+\beta_1(PlantType)
++
+\beta_2(FuelFlow)
++
+\beta_3(BoilerLoad)
++
+\beta_4(AmbientTemp)
++
+\beta_5(CarbonCapture)
+$$
+
+---
+
+# Synthetic CO₂ Generation Equation
+
+The synthetic dataset generation process models industrial emissions using:
+
+$$
+CO_2 =
+(0.25 \times FuelFlow)
++
+(0.12 \times BoilerLoad)
+-
+(0.02 \times AmbientTemp)
++
+PlantFactor
+-
+(20 \times CarbonCapture)
++
+Noise
+$$
+
+Where:
+
+| Variable | Meaning |
+|---|---|
+| $FuelFlow$ | Industrial fuel consumption |
+| $BoilerLoad$ | Power plant operational load |
+| $AmbientTemp$ | External environmental temperature |
+| $PlantFactor$ | Emission contribution from plant type |
+| $CarbonCapture$ | Carbon capture reduction effect |
+| $Noise$ | Random industrial variability |
+
+---
+
+# Plant Type Factors
+
+Different plant types contribute differently to emissions.
+
+| Plant Type | Encoded Value | Plant Factor |
+|---|---|---|
+| Coal | 0 | 35 |
+| Gas | 1 | 22 |
+| Nuclear | 2 | 5 |
+| Solar | 3 | 2 |
+| Biomass | 4 | 15 |
+
+---
+
+# Regression Interpretation
+
+The regression model learns relationships between
+industrial operational variables and CO₂ emissions.
+
+### Positive Coefficients
+
+Variables such as:
+
+* Fuel Flow
+* Boiler Load
+
+increase CO₂ emissions.
+
+---
+
+### Negative Coefficients
+
+Variables such as:
+
+* Ambient Temperature
+* Carbon Capture
+
+reduce predicted CO₂ emissions.
+
+---
+
+# Model Learning Objective
+
+The objective of Multiple Linear Regression is to minimize prediction error using Ordinary Least Squares (OLS).
+
+The optimization objective is:
+
+$$
+\min \sum_{i=1}^{n}
+(y_i - \hat{y}_i)^2
+$$
+
+This minimizes the squared difference between actual and predicted CO₂ emissions.
 
 
 
