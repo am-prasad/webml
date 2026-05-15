@@ -3,10 +3,12 @@ import numpy as np
 import joblib
 import json
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report, roc_curve, auc
 from sklearn.ensemble import IsolationForest
 import lightgbm as lgb
 
@@ -28,6 +30,80 @@ def generate_synthetic_data(num_samples=2000):
         'co2_emission': co2_emission
     })
 
+def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test_preds, feature_columns, numeric_cols, df_original, scaler):
+    """Generates and saves all essential machine learning visualizations."""
+    print("\nGenerating evaluation plots...")
+    
+    # Create a directory to save the plots
+    os.makedirs("plots", exist_ok=True)
+    
+    sns.set_theme(style="whitegrid")
+
+    # --- Confusion Matrix ---
+    plt.figure(figsize=(8, 6))
+    cm = confusion_matrix(y_test, test_preds)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=['Normal Emission', 'High Emission'], 
+                yticklabels=['Normal Emission', 'High Emission'])
+    plt.title('Confusion Matrix - LightGBM Classifier', fontsize=14)
+    plt.xlabel('Predicted State')
+    plt.ylabel('Actual State')
+    plt.savefig('plots/1_confusion_matrix.png', bbox_inches='tight')
+    plt.close()
+
+    # --- Feature Importance ---
+    plt.figure(figsize=(10, 6))
+    feature_imp = pd.DataFrame({'Importance': model.feature_importances_, 'Feature': feature_columns})
+    feature_imp = feature_imp.sort_values(by="Importance", ascending=False)
+    sns.barplot(x="Importance", y="Feature", data=feature_imp, palette="viridis")
+    plt.title('Feature Importance (What drives CO2 emissions?)', fontsize=14)
+    plt.savefig('plots/2_feature_importance.png', bbox_inches='tight')
+    plt.close()
+
+    # --- ROC Curve ---
+    plt.figure(figsize=(8, 6))
+    # Get probabilities for the positive class
+    y_prob = model.predict_proba(X_test_scaled)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_prob)
+    roc_auc = auc(fpr, tpr)
+    
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)', fontsize=14)
+    plt.legend(loc="lower right")
+    plt.savefig('plots/3_roc_curve.png', bbox_inches='tight')
+    plt.close()
+
+    # --- Anomaly Detection Scatter Plot ---
+    plt.figure(figsize=(10, 6))
+    # Predict anomalies on the entire dataset for visualization
+    X_all_scaled_numeric = scaler.transform(df_original[numeric_cols])
+
+    X_all_scaled = df_original.copy()
+    X_all_scaled[numeric_cols] = X_all_scaled_numeric
+    X_all_scaled = X_all_scaled[feature_columns]
+    
+    df_plot = df_original.copy()
+    df_plot['Anomaly_Status'] = anomaly_detector.predict(X_all_scaled)
+    
+    # Map 1 to 'Normal' and -1 to 'Anomaly'
+    df_plot['Anomaly_Status'] = df_plot['Anomaly_Status'].map({1: 'Normal', -1: 'Anomaly'})
+    
+    sns.scatterplot(data=df_plot, x='fuel_flow', y='boiler_load', 
+                    hue='Anomaly_Status', palette={'Normal': '#2ecc71', 'Anomaly': '#e74c3c'}, 
+                    alpha=0.6, s=50)
+    plt.title('Anomaly Detection: Fuel Flow vs Boiler Load', fontsize=14)
+    plt.xlabel('Fuel Flow (tons/hr)')
+    plt.ylabel('Boiler Load (MW)')
+    plt.savefig('plots/4_anomaly_scatter.png', bbox_inches='tight')
+    plt.close()
+    
+    print("✅ All plots saved successfully in the 'plots/' directory!")
+
 def train_model(csv_path=None):
     # 1. Load Data
     if csv_path and os.path.exists(csv_path):
@@ -43,18 +119,10 @@ def train_model(csv_path=None):
     X = df[feature_columns]
     
     # ---------------------------------------------------------
-    # THE FIX: DYNAMIC THRESHOLDING
+    # DYNAMIC THRESHOLDING
     # ---------------------------------------------------------
-    # Find the exact middle value of your specific CO2 data
     EMISSION_THRESHOLD = df['co2_emission'].median()
-    print(f"\nCalculated Dynamic Threshold: {EMISSION_THRESHOLD:.4f}")
-    
-    # Create classes: 1 if above median, 0 if below
     y = (df['co2_emission'] > EMISSION_THRESHOLD).astype(int)
-    
-    print("\nClass Distribution (Should be balanced now):")
-    print(y.value_counts())
-    print("-" * 50)
 
     # 2. Split Data
     print("Splitting dataset 80/20...")
@@ -93,7 +161,10 @@ def train_model(csv_path=None):
     anomaly_detector = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
     anomaly_detector.fit(X_train_scaled)
 
-    # 6. Compile Metrics
+    # 6. Generate Plots (Calling the function instead of defining it)
+    generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test_preds, feature_columns, numeric_cols, df, scaler)
+
+    # 7. Compile Metrics
     metrics = {
         "algorithm": "LightGBM Classifier + Isolation Forest",
         "train_accuracy": round(float(accuracy_score(y_train, train_preds)), 4),
@@ -108,12 +179,11 @@ def train_model(csv_path=None):
     for k, v in metrics.items():
         print(f"{k}: {v}")
 
-    # 7. Save Artifacts
+    # 8. Save Artifacts
     print("\nSaving artifacts...")
     joblib.dump(model, "model.pkl")
     joblib.dump(anomaly_detector, "anomaly_detector.pkl")
     
-    # Save the dynamic threshold in the preprocessor so the backend knows what it is!
     joblib.dump({
         "scaler": scaler, 
         "feature_columns": feature_columns, 
@@ -123,8 +193,7 @@ def train_model(csv_path=None):
     with open("metadata.json", "w") as f:
         json.dump(metrics, f, indent=4)
         
-    print("Training completed successfully! The 'Only One Class' error is resolved.")
+    print("Training completed successfully!")
 
 if __name__ == "__main__":
-    # Ensure this path points to your actual CSV file
     train_model(csv_path=r"data\processed_synthetic_data_30days.csv")

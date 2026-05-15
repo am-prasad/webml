@@ -100,13 +100,25 @@ async function fetchMetrics() {
         const data = await response.json();
 
         document.getElementById("algorithm").textContent = data.algorithm;
-        document.getElementById("r2Score").textContent = data.r2_score.toFixed(4);
-        document.getElementById("mae").textContent = data.mae.toFixed(2);
-        document.getElementById("rmse").textContent = data.rmse.toFixed(2);
+      document.getElementById("r2Score").textContent =
+    data.test_accuracy?.toFixed(4) || "-";
+
+document.getElementById("mae").textContent =
+    data.train_f1_score?.toFixed(4) || "-";
+
+document.getElementById("rmse").textContent =
+    data.test_f1_score?.toFixed(4) || "-";
 
         // Update comparison chart
-        comparisonChart.data.datasets[0].data = [data.train_mae, data.train_rmse];
-        comparisonChart.data.datasets[1].data = [data.test_mae, data.test_rmse];
+        comparisonChart.data.datasets[0].data = [
+    data.train_accuracy || 0,
+    data.train_f1_score || 0
+];
+
+comparisonChart.data.datasets[1].data = [
+    data.test_accuracy || 0,
+    data.test_f1_score || 0
+];
         comparisonChart.update();
     } catch (error) {
         console.error("Error fetching metrics:", error);
@@ -152,13 +164,12 @@ async function handlePrediction(event) {
                     "Content-Type": "application/json"
                 },
 
-                body: JSON.stringify({
-                    plant_type,
-                    fuel_flow,
-                    boiler_load,
-                    ambient_temp,
-                    carbon_capture
-                })
+             body: JSON.stringify({
+    fuelflow: fuel_flow,
+    boilerload: boiler_load,
+    ambient_temp: ambient_temp,
+    capture_on: carbon_capture
+})
             }
         );
 

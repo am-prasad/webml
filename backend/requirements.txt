@@ -5,4 +5,5 @@ lightgbm
 scikit-learn 
 pandas 
 numpy 
-joblib
+jobli matplotlib 
+seaborn
