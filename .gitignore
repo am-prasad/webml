@@ -5,3 +5,4 @@ backend/preprocessor.joblib
 __pycache__/
 backend/linear_model.pkl
 backend/linear_preprocessor.joblib
+backend/anomaly_detector.pkl

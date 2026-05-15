@@ -10,15 +10,15 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+    
         <header class="header">
-            <h1>🌱 EcoGridAI</h1>
+            <h1>EcoGridAI</h1>
             <p>Advanced ML Analytics for CO₂ Emissions Prediction</p>
         </header>
 
-        <!-- Main Grid -->
+  
         <main class="dashboard-grid">
-            <!-- Left Panel: Input Form -->
+            
             <section class="input-panel">
                 <h2>Prediction Engine</h2>
                 <form id="predictionForm">
@@ -65,7 +65,7 @@
                     <button type="submit" class="btn-predict">Generate Prediction</button>
                 </form>
 
-                <!-- Metrics Display -->
+                
                 <div class="metrics-box">
                     <h3>Model Performance</h3>
                     <div class="metric-item">
@@ -90,6 +90,9 @@
             <!-- Center Panel: Gauge Chart -->
             <section class="chart-panel gauge-panel">
                 <h2>CO₂ Prediction</h2>
+                <div id="anomalyAlert" class="anomaly-alert hidden">
+                     ANOMALY DETECTED: ABNORMAL PLANT STATE
+                </div>
                 <div class="gauge-container">
                     <canvas id="gaugeChart"></canvas>
                 </div>
@@ -106,7 +109,7 @@
             </section>
         </main>
 
-        <!-- Footer -->
+       
         <footer class="footer">
             <p>&copy; 2026 EcoGridAI | High-Performance ML Analytics</p>
         </footer>

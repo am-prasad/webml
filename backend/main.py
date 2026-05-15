@@ -1,199 +1,88 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-import json
-import os
-import joblib
+import json, os, joblib
 import pandas as pd
 import numpy as np
 
 app = FastAPI(title="EcoGridAI", version="2.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 class PredictionInput(BaseModel):
-
-    plant_type: str
-    fuel_flow: float
-    boiler_load: float
+    fuelflow: float
+    boilerload: float
     ambient_temp: float
-    carbon_capture: int
+    capture_on: int
 
+NORMALIZATION_RANGES = { "fuelflow": (0, 200), "boilerload": (0, 500), "ambient_temp": (-20, 80) }
 
-NORMALIZATION_RANGES = {
-    "fuel_flow": (0, 200),
-    "boiler_load": (0, 500),
-    "ambient_temp": (-20, 80)
-}
+def normalize_input(value: float, feature: str) -> float:
+    min_val, max_val = NORMALIZATION_RANGES[feature]
+    return float(np.clip((value - min_val) / (max_val - min_val), 0.0, 1.0))
 
-PLANT_MAPPING = {
-    "Coal": 0,
-    "Gas": 1,
-    "Nuclear": 2,
-    "Solar": 3,
-    "Biomass": 4
-}
 
 MODEL_PATH = "model.pkl"
+ANOMALY_PATH = "anomaly_detector.pkl"
 PREPROCESSOR_PATH = "preprocessor.joblib"
 METADATA_PATH = "metadata.json"
 
 model = None
+anomaly_detector = None
 preprocessor = None
-
-
-def normalize_input(value, feature):
-
-    min_val, max_val = NORMALIZATION_RANGES[feature]
-
-    return float(
-        np.clip(
-            (value - min_val) / (max_val - min_val),
-            0.0,
-            1.0
-        )
-    )
-
 
 @app.on_event("startup")
 def load_artifacts():
-
-    global model, preprocessor
-
-    if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-
-    if os.path.exists(PREPROCESSOR_PATH):
-        preprocessor = joblib.load(PREPROCESSOR_PATH)
-
-    print("✅ Artifacts Loaded")
-
+    global model, anomaly_detector, preprocessor
+    try:
+        if os.path.exists(MODEL_PATH): model = joblib.load(MODEL_PATH)
+        if os.path.exists(ANOMALY_PATH): anomaly_detector = joblib.load(ANOMALY_PATH)
+        if os.path.exists(PREPROCESSOR_PATH): preprocessor = joblib.load(PREPROCESSOR_PATH)
+        print(" Dual-Engine Models loaded successfully.")
+    except Exception as e:
+        print(f" Error loading ML artifacts: {e}")
 
 @app.post("/predict")
 async def predict(input_data: PredictionInput):
+    if model is None or anomaly_detector is None or preprocessor is None:
+        return {"error": "Models not loaded", "status": "failed"}
 
     try:
-
-        scaler = preprocessor["scaler"]
-
         raw_data = {
-            "plant_type":
-                PLANT_MAPPING[input_data.plant_type],
-
-            "fuel_flow":
-                normalize_input(
-                    input_data.fuel_flow,
-                    "fuel_flow"
-                ),
-
-            "boiler_load":
-                normalize_input(
-                    input_data.boiler_load,
-                    "boiler_load"
-                ),
-
-            "ambient_temp":
-                normalize_input(
-                    input_data.ambient_temp,
-                    "ambient_temp"
-                ),
-
-            "carbon_capture":
-                input_data.carbon_capture
+            "fuel_flow": normalize_input(input_data.fuelflow, "fuelflow"),
+            "boiler_load": normalize_input(input_data.boilerload, "boilerload"),
+            "ambient_temp": normalize_input(input_data.ambient_temp, "ambient_temp"),
+            "carbon_capture": input_data.capture_on
         }
+        
+        feature_columns = preprocessor.get("feature_columns")
+        scaler = preprocessor.get("scaler")
 
-        feature_columns = preprocessor["feature_columns"]
+        df = pd.DataFrame(0.0, index=[0], columns=feature_columns)
+        for col in feature_columns:
+            df.at[0, col] = raw_data[col]
 
-        df = pd.DataFrame(
-            [raw_data],
-            columns=feature_columns
-        )
+        if scaler:
+            numeric_cols = [c for c in ['fuel_flow', 'boiler_load', 'ambient_temp'] if c in df.columns]
+            df[numeric_cols] = scaler.transform(df[numeric_cols])
 
-        numeric_cols = [
-            "plant_type",
-            "fuel_flow",
-            "boiler_load",
-            "ambient_temp"
-        ]
-
-        df[numeric_cols] = scaler.transform(
-            df[numeric_cols]
-        )
-
-        prediction = model.predict(df)[0]
-
-        final_prediction = float(
-            np.clip(prediction, 0.0, 150.0)
-        )
+        #  Predict CO2
+        prediction = float(np.clip(model.predict(df)[0], 0.0, 50.0))
+        
+     #Predict Anomaly (-1 means Anomaly, 1 means Normal)
+        is_anomaly = anomaly_detector.predict(df)[0] == -1
 
         return {
-            "prediction": round(final_prediction, 4),
+            "prediction": round(prediction, 4),
+            "is_anomaly": bool(is_anomaly), 
             "status": "success"
         }
-
     except Exception as e:
-
-        return {
-            "error": str(e),
-            "status": "failed"
-        }
-
+        return {"error": str(e), "status": "failed"}
 
 @app.get("/metrics")
 async def metrics():
-
     if os.path.exists(METADATA_PATH):
-
-        with open(METADATA_PATH, "r") as f:
-
-            data = json.load(f)
-
-            return {
-                "r2_score":
-                    data.get("test_r2_score", 0.0),
-
-                "mae":
-                    data.get("test_mae", 0.0),
-
-                "rmse":
-                    data.get("test_rmse", 0.0),
-
-                "algorithm":
-                    data.get("algorithm",
-                             "LightGBM Regressor"),
-
-                "train_mae":
-                    data.get("train_mae", 0.0),
-
-                "train_rmse":
-                    data.get("train_rmse", 0.0),
-
-                "test_mae":
-                    data.get("test_mae", 0.0),
-
-                "test_rmse":
-                    data.get("test_rmse", 0.0)
-            }
-
-    return {
-        "r2_score": 0.0,
-        "mae": 0.0,
-        "rmse": 0.0,
-        "algorithm": "Unavailable"
-    }
-
-
-@app.get("/")
-async def root():
-
-    return {
-        "message":
-            "EcoGridAI API Running Successfully 🚀"
-    }
+        with open(METADATA_PATH, 'r') as f:
+            return json.load(f)
+    return {"error": "Metrics missing"}

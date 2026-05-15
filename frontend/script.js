@@ -185,6 +185,14 @@ async function handlePrediction(event) {
 
             gaugeChart.update();
         }
+        const alertBox = document.getElementById("anomalyAlert");
+            if (data.is_anomaly) {
+                alertBox.classList.remove("hidden");
+                alertBox.classList.add("visible");
+            } else {
+                alertBox.classList.remove("visible");
+                alertBox.classList.add("hidden");
+            }
 
     } catch (error) {
 
