@@ -1,71 +1,81 @@
-#  EcoGridAI: Real-Time CO₂ Emission Monitor
+# EcoGridAI: Dual-Engine CO₂ Emission & Anomaly Monitor
 
-EcoGridAI is a full-stack, machine-learning-powered web application designed to predict and monitor **CO₂ emissions from thermal power plants in real time**.
+EcoGridAI is a full-stack, machine-learning-powered web application designed to monitor CO₂ emissions and detect equipment anomalies in thermal power plants in real time.
 
-By analyzing operational parameters such as fuel flow, boiler load, ambient temperature, and carbon capture status, the system provides actionable environmental insights for sustainability monitoring and compliance analysis.
+Moving beyond simple regression, this system utilizes a **Dual-Engine AI Architecture** to predict environmental compliance states (**Normal vs. High Emissions**) while simultaneously acting as an automated watchdog for equipment failure and sensor drift.
 
 ---
 
 #  Features
 
-*  Real-time CO₂ emission prediction
-*  Machine Learning powered by LightGBM
-*  Interactive frontend dashboard using Chart.js
-*  FastAPI REST API backend
-*  Performance metrics visualization
-*  Carbon capture impact analysis
-*  Industrial operational parameter simulation
-*  Lightweight frontend with zero framework dependencies
+- **Dual-Engine ML:** Simultaneous state classification and anomaly detection.
+- **State Prediction:** Machine Learning powered by LightGBM Classifier.
+- **Anomaly Detection:** Unsupervised learning via Isolation Forest.
+- **Interactive Frontend Dashboard:** Built with Chart.js, featuring real-time anomaly alerts.
+- **FastAPI REST API Backend:** High-performance, asynchronous data processing.
+- **Automated Visualizations:** Auto-generates Confusion Matrices, ROC Curves, and Feature Importance plots.
+- **Lightweight Frontend:** Zero framework dependencies (No npm required).
 
 ---
 
 #  Tech Stack
 
 ## Backend
-
-* Python
-* FastAPI
-* Uvicorn
+- Python
+- FastAPI
+- Uvicorn
 
 ## Machine Learning
-
-* LightGBM
-* Scikit-Learn
-* Pandas
-* NumPy
-* Joblib
+- LightGBM
+- Scikit-Learn
+- Pandas & NumPy
+- Joblib
+- Matplotlib & Seaborn (for automated plotting)
 
 ## Frontend
-
-* HTML5
-* CSS3
-* JavaScript
-* Chart.js
+- HTML5
+- CSS3
+- JavaScript
+- Chart.js
 
 ---
 
-#  Machine Learning Architecture
+# Machine Learning Architecture
 
-The predictive engine uses a **Light Gradient Boosting Machine (LightGBM) Regressor**.
+The predictive system relies on a **Dual-Engine Architecture** running in parallel:
 
-LightGBM is selected because of its:
+## Engine 1: LightGBM Classifier (State Prediction)
 
-* Fast training performance
-* High efficiency on large datasets
-* Strong handling of non-linear industrial relationships
-* Better optimization compared to traditional ensemble methods like Random Forests
+Instead of predicting raw CO₂ numbers, it classifies the plant's state into:
+- Normal Emission (0)
+- High Emission (1)
+
+### Advantages
+- Fast training performance via leaf-wise tree growth.
+- Strong handling of non-linear thermodynamic relationships.
+
+---
+
+## Engine 2: Isolation Forest (Anomaly Detection)
+
+An unsupervised learning model that acts as an equipment watchdog.
+
+### Capabilities
+- Isolates observations to detect physically impossible states  
+  (e.g., max fuel flow but zero boiler load).
+- Alerts operators to potential sensor drift or mechanical failures.
 
 ---
 
 #  Input Features
 
-The model accepts the following operational parameters:
+The models accept the following operational parameters:
 
-| Feature          | Description            | Unit    |
-| ---------------- | ---------------------- | ------- |
-| `fuel_flow`      | Fuel consumption rate  | tons/hr |
-| `boiler_load`    | Power plant load       | MW      |
-| `ambient_temp`   | External temperature   | °C      |
+| Feature | Description | Unit |
+|---|---|---|
+| `fuel_flow` | Fuel consumption rate | tons/hr |
+| `boiler_load` | Power plant load | MW |
+| `ambient_temp` | External temperature | °C |
 | `carbon_capture` | Carbon capture enabled | Boolean |
 
 ---
@@ -73,82 +83,89 @@ The model accepts the following operational parameters:
 #  Data Pipeline
 
 ## 1. Feature Ingestion
-
 Operational sensor data is collected from the thermal plant environment.
 
-## 2. Data Preprocessing
+---
+
+## 2. Dynamic Thresholding (Binarization)
+
+Continuous CO₂ data is converted into binary classes using the dataset's median.
+
+This ensures a perfectly balanced 50/50 class distribution, preventing the **"Accuracy Paradox"** associated with imbalanced data.
+
+---
+
+## 3. Data Preprocessing
 
 Continuous numeric features are normalized using Scikit-Learn's `StandardScaler`.
 
 This ensures that features with larger magnitudes do not dominate the optimization process.
 
-## 3. Train-Test Split
+---
+
+## 4. Stratified Train-Test Split
 
 The dataset is divided into:
+- 80% Training Data
+- 20% Testing Data
 
-* **80% Training Data**
-* **20% Testing Data**
-
-This helps evaluate model generalization on unseen operational conditions.
+Stratification ensures the exact ratio of High/Low emissions is maintained in both sets.
 
 ---
 
 #  Model Evaluation Metrics
 
-To evaluate prediction quality, the backend computes multiple regression metrics.
+Because the primary engine is a **Classifier**, we evaluate prediction quality using **Confusion Matrix metrics** rather than regression errors.
 
 ---
 
-## 1. Mean Absolute Error (MAE)
+## 1. Accuracy
 
-Measures the average magnitude of prediction errors.
+The overall proportion of correct predictions across both High and Normal emission states.
 
-$$
-\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} \left| y_i - \hat{y}_i \right|
-$$
-
-
----
-
-## 2. Root Mean Squared Error (RMSE)
-
-Penalizes larger prediction errors more heavily.
-
-$$
-\text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2}
-$$
-
+```math
+\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}
+```
 
 ---
 
-## 3. R-Squared Score ($R^2$)
+## 2. Precision
 
-Represents how much variance in emissions is explained by the model.
+When the model triggers a **"High Emission"** alert, how often is it actually correct?  
+(Measures False Alarm rate).
 
-$$
-R^2 = 1 - \frac{\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}{\sum_{i=1}^{n}(y_i - \bar{y})^2}
-$$
+```math
+\text{Precision} = \frac{TP}{TP + FP}
+```
 
+---
+
+## 3. Recall (Sensitivity)
+
+Out of all the actual **"High Emission"** events, how many did the model successfully catch?  
+(Measures Missed Alarm rate).
+
+```math
+\text{Recall} = \frac{TP}{TP + FN}
+```
 
 ---
 
-## 4. Mean Absolute Percentage Error (MAPE)
+## 4. F1 Score
 
-Measures prediction error in percentage form.
+The harmonic mean of Precision and Recall.
 
-$$
-\text{MAPE} = \frac{100\%}{n} \sum_{i=1}^{n} \left| \frac{y_i - \hat{y}_i}{y_i} \right|
-$$
+This is the ultimate metric for classification, penalizing the model for false alarms and missed alarms alike.
 
-
----
+```math
+\text{F1} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+```
 
 Where:
-
-* (y_i) = Actual value
-* (\hat{y}_i) = Predicted value
-* (\bar{y}) = Mean actual value
-* (n) = Number of samples
+- TP = True Positives
+- TN = True Negatives
+- FP = False Positives
+- FN = False Negatives
 
 ---
 
@@ -157,57 +174,57 @@ Where:
 ## Overfitting (High Variance)
 
 ### Problem
-
 The model memorizes training data but performs poorly on unseen data.
 
 ### Mitigations
-
-* `max_depth=8`
-* Strict train-test separation
-* Early stopping (optional)
-* Regularized tree growth
+- 5-Fold Stratified Cross-Validation to prove consistency across multiple data slices.
+- `max_depth=8` restriction.
+- Strict train-test separation.
 
 ---
 
 ## Underfitting (High Bias)
 
 ### Problem
-
 The model fails to capture the underlying relationship between operational parameters and emissions.
 
 ### Mitigations
-
-* Using LightGBM instead of linear regression
-* `learning_rate=0.05`
-* `n_estimators=200`
-* Feature scaling and tuning
+- Using Gradient Boosting (LightGBM) instead of simple linear models.
+- `learning_rate=0.05` to ensure methodical pattern learning.
+- `n_estimators=200` to build sufficient tree depth.
 
 ---
 
-# 📂 Project Structure
+# Project Structure
 
 ```bash
-EcoGridAI/
+EcoGrid/
 │
 ├── backend/
 │   ├── main.py
 │   ├── train.py
 │   ├── requirements.txt
-│   ├── model.pkl
-│   ├── preprocessor.joblib
-│   └── metadata.json
+│   ├── model.pkl                 # LightGBM Classifier
+│   ├── anomaly_detector.pkl      # Isolation Forest Model
+│   ├── preprocessor.joblib       
+│   ├── metadata.json
+│   └── plots/                   
+│       ├── 1_confusion_matrix.png
+│       ├── 2_feature_importance.png
+│       ├── 3_roc_curve.png
+│       └── 4_anomaly_scatter.png
 │
 ├── frontend/
 │   ├── index.html
 │   ├── style.css
-│   └── script.js
+│   └── frontend.js
 │
 └── README.md
 ```
 
 ---
 
-#  Installation & Setup
+# ⚙️ Installation & Setup
 
 ## 1. Clone the Repository
 
@@ -234,23 +251,24 @@ pip install -r requirements.txt
 
 ---
 
-#  Train the Model
+# Train the Models
 
-Generate the trained model and preprocessing artifacts:
+Generate the trained models, preprocessing artifacts, and visualization plots:
 
 ```bash
 python train.py
 ```
 
-Generated files:
-
-* `model.pkl`
-* `preprocessor.joblib`
-* `metadata.json`
+## Generated Files
+- `model.pkl`
+- `anomaly_detector.pkl`
+- `preprocessor.joblib`
+- `metadata.json`
+- `/plots` directory images
 
 ---
 
-# ▶️ Run the API Server
+#  Run the API Server
 
 Start the FastAPI server:
 
@@ -266,7 +284,7 @@ http://127.0.0.1:8000
 
 ---
 
-# 🌐 Launch the Frontend
+#  Launch the Frontend
 
 Open:
 
@@ -280,9 +298,9 @@ No npm installation or frontend build tools are required.
 
 ---
 
-# 📡 API Endpoint
+#  API Endpoint
 
-## Predict CO₂ Emissions
+## Predict State & Anomalies
 
 ### POST `/predict`
 
@@ -290,10 +308,10 @@ No npm installation or frontend build tools are required.
 
 ```json
 {
-  "fuel_flow": 120,
-  "boiler_load": 450,
-  "ambient_temp": 32,
-  "carbon_capture": 1
+  "fuelflow": 120.5,
+  "boilerload": 450.0,
+  "ambient_temp": 32.0,
+  "capture_on": 1
 }
 ```
 
@@ -301,24 +319,28 @@ No npm installation or frontend build tools are required.
 
 ```json
 {
-  "predicted_co2": 18.74
+  "prediction": 1,
+  "is_anomaly": false,
+  "status": "success"
 }
 ```
 
----
-
-# 📈 Future Enhancements
-
-*  Real industrial IoT integration
-*  Cloud deployment
-* Advanced analytics dashboard
-*  Historical emissions reporting
-* Deep learning experimentation
-*  Live environmental compliance monitoring
+> Note: `is_anomaly: true` will trigger the frontend UI alert banner.
 
 ---
 
-# 🤝 Contributing
+# Future Enhancements
+
+- Real industrial IoT (SCADA) integration
+- Cloud deployment (AWS/Render)
+- Advanced analytics dashboard with historical plots
+- Historical emissions reporting
+- Deep learning experimentation (Autoencoders for Anomaly Detection)
+- Live environmental compliance monitoring
+
+---
+
+# Contributing
 
 Contributions are welcome.
 
@@ -326,9 +348,3 @@ Contributions are welcome.
 2. Create a feature branch
 3. Commit changes
 4. Submit a pull request
-
-
-
-
-
-
