@@ -3,68 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="data:image/png;base64,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">
     <title>EcoGridAI - Industrial Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-    
         <header class="header">
-            <h1>EcoGridAI</h1>
+            <h1>EcoGrid</h1>
             <p>Advanced ML Analytics for CO₂ Emissions Prediction</p>
         </header>
-
   
         <main class="dashboard-grid">
-            
             <section class="input-panel">
                 <h2>Prediction Engine</h2>
                 <form id="predictionForm">
                     <div class="form-group">
-    <label for="plant_type">Plant Type:</label>
-
-    <select id="plant_type">
-
-        <option value="Coal">Coal</option>
-
-        <option value="Gas">Gas</option>
-
-        <option value="Nuclear">Nuclear</option>
-
-        <option value="Solar">Solar</option>
-
-        <option value="Biomass">Biomass</option>
-
-    </select>
-</div>
+                        <label for="plant_type">Plant Type:</label>
+                        <select id="plant_type">
+                            <option value="Coal">Coal</option>
+                            <option value="Gas">Gas</option>
+                            <option value="Nuclear">Nuclear</option>
+                            <option value="Solar">Solar</option>
+                            <option value="Biomass">Biomass</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group">
                        <label for="fuel_flow">Fuel Flow (0-200):</label>
-<input type="number" step="any" id="fuel_flow">
+                       <input type="number" step="any" id="fuel_flow" value="120" required>
                     </div>
 
                     <div class="form-group">
                         <label for="boiler_load">Boiler Load (0-500):</label>
-<input type="number" step="any" id="boiler_load">
+                        <input type="number" step="any" id="boiler_load" value="300" required>
                     </div>
 
                     <div class="form-group">
                         <label for="ambient_temp">Ambient Temp (-20 to 80°C):</label>
-                        <input type="number"  step="any" id="ambient_temp" min="-20" max="80" step="any" value="25" required>
+                        <input type="number" step="any" id="ambient_temp" min="-20" max="80" value="25" required>
                     </div>
 
                     <div class="form-group">
                         <label for="carbon_capture">Carbon Capture:</label>
-<select id="carbon_capture">
+                        <select id="carbon_capture">
                             <option value="0">Off</option>
-                            <option value="1">On</option>
+                            <option value="1" selected>On</option>
                         </select>
                     </div>
 
                     <button type="submit" class="btn-predict">Generate Prediction</button>
                 </form>
-
                 
                 <div class="metrics-box">
                     <h3>Model Performance</h3>
@@ -73,48 +62,44 @@
                         <strong id="algorithm">Loading...</strong>
                     </div>
                     <div class="metric-item">
-                        <span>R² Score:</span>
+                        <span>Test R² Score:</span>
                         <strong id="r2Score">-</strong>
                     </div>
                     <div class="metric-item">
-                        <span>MAE:</span>
+                        <span>Test MAE:</span>
                         <strong id="mae">-</strong>
                     </div>
                     <div class="metric-item">
-                        <span>RMSE:</span>
+                        <span>Test RMSE:</span>
                         <strong id="rmse">-</strong>
                     </div>
                 </div>
             </section>
 
-            <!-- Center Panel: Gauge Chart -->
             <section class="chart-panel gauge-panel">
                 <h2>CO₂ Prediction</h2>
                 <div id="anomalyAlert" class="anomaly-alert hidden">
-                     ANOMALY DETECTED: ABNORMAL PLANT STATE
+                    ⚠️ ANOMALY DETECTED: ABNORMAL PLANT STATE
                 </div>
                 <div class="gauge-container">
                     <canvas id="gaugeChart"></canvas>
                 </div>
                 <div class="prediction-value">
                     <p>Predicted CO₂:</p>
-                    <h3 id="predictionValue">0.0000</h3>
+                    <h3 id="predictionValue">0.0000%</h3>
                 </div>
             </section>
 
-            <!-- Right Panel: Comparison Chart -->
             <section class="chart-panel comparison-panel">
-                <h2>Train vs Test Performance</h2>
+                <h2>Train vs Test Error (Lower is Better)</h2>
                 <canvas id="comparisonChart"></canvas>
             </section>
         </main>
 
-       
         <footer class="footer">
             <p>&copy; 2026 EcoGridAI | High-Performance ML Analytics</p>
         </footer>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,9 +1,11 @@
 {
-    "algorithm": "LightGBM Classifier + Isolation Forest",
-    "train_accuracy": 0.8361,
-    "test_accuracy": 0.8309,
-    "cv_mean_accuracy": 0.8287,
-    "cv_std_deviation": 0.0027,
-    "train_f1_score": 0.8298,
-    "test_f1_score": 0.8251
+    "algorithm": "Hybrid LGBM Regressor + Isolation Forest",
+    "train_r2": 0.6822,
+    "test_r2": 0.6746,
+    "train_mae": 1.2663,
+    "test_mae": 1.2852,
+    "train_rmse": 1.5089,
+    "test_rmse": 1.5313,
+    "test_accuracy": 0.7603,
+    "test_f1_score": 0.7835
 }

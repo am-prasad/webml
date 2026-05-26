@@ -230,8 +230,7 @@ body {
     background: #00ff88;
 }
 
-
-
+/* Anomaly Alert System */
 .anomaly-alert {
     background-color: rgba(255, 50, 50, 0.1);
     color: #ff3333;

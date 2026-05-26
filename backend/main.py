@@ -7,7 +7,7 @@ import numpy as np
 
 app = FastAPI(title="EcoGridAI", version="2.0.0")
 
-app.add_middleware(CORSMiddleware, allow_origins=["10.81.25.110:5500/frontend","*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 class PredictionInput(BaseModel):
     fuelflow: float
@@ -20,7 +20,6 @@ NORMALIZATION_RANGES = { "fuelflow": (0, 200), "boilerload": (0, 500), "ambient_
 def normalize_input(value: float, feature: str) -> float:
     min_val, max_val = NORMALIZATION_RANGES[feature]
     return float(np.clip((value - min_val) / (max_val - min_val), 0.0, 1.0))
-
 
 MODEL_PATH = "model.pkl"
 ANOMALY_PATH = "anomaly_detector.pkl"
@@ -38,9 +37,9 @@ def load_artifacts():
         if os.path.exists(MODEL_PATH): model = joblib.load(MODEL_PATH)
         if os.path.exists(ANOMALY_PATH): anomaly_detector = joblib.load(ANOMALY_PATH)
         if os.path.exists(PREPROCESSOR_PATH): preprocessor = joblib.load(PREPROCESSOR_PATH)
-        print(" Dual-Engine Models loaded successfully.")
+        print("✅ Dual-Engine Models loaded successfully.")
     except Exception as e:
-        print(f" Error loading ML artifacts: {e}")
+        print(f"⚠️ Error loading ML artifacts: {e}")
 
 @app.post("/predict")
 async def predict(input_data: PredictionInput):
@@ -66,14 +65,19 @@ async def predict(input_data: PredictionInput):
             numeric_cols = [c for c in ['fuel_flow', 'boiler_load', 'ambient_temp'] if c in df.columns]
             df[numeric_cols] = scaler.transform(df[numeric_cols])
 
-        #  Predict CO2
+        # Engine 1: Predict exact CO2 Number
         prediction = float(np.clip(model.predict(df)[0], 0.0, 50.0))
         
-     #Predict Anomaly (-1 means Anomaly, 1 means Normal)
+        # Engine 2: Predict Anomaly (-1 means Anomaly, 1 means Normal)
         is_anomaly = anomaly_detector.predict(df)[0] == -1
+        
+        # Threshold Check for UI coloring
+        threshold = preprocessor.get("threshold", 30.0)
+        is_high_emission = prediction > threshold
 
         return {
             "prediction": round(prediction, 4),
+            "is_high_emission": bool(is_high_emission),
             "is_anomaly": bool(is_anomaly), 
             "status": "success"
         }

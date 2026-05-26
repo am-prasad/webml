@@ -6,9 +6,9 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report, roc_curve, auc
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, roc_curve, auc, r2_score, mean_absolute_error, mean_squared_error
 from sklearn.ensemble import IsolationForest
 import lightgbm as lgb
 
@@ -30,43 +30,36 @@ def generate_synthetic_data(num_samples=2000):
         'co2_emission': co2_emission
     })
 
-def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test_preds, feature_columns, numeric_cols, df_original, scaler):
+def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df_original, scaler):
     """Generates and saves all essential machine learning visualizations."""
     print("\nGenerating evaluation plots...")
-    
-    # Create a directory to save the plots
     os.makedirs("plots", exist_ok=True)
-    
     sns.set_theme(style="whitegrid")
 
-    # --- Confusion Matrix ---
+    # --- 1. Confusion Matrix ---
     plt.figure(figsize=(8, 6))
-    cm = confusion_matrix(y_test, test_preds)
+    cm = confusion_matrix(y_test_binary, test_preds_binary)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=['Normal Emission', 'High Emission'], 
-                yticklabels=['Normal Emission', 'High Emission'])
-    plt.title('Confusion Matrix - LightGBM Classifier', fontsize=14)
+                xticklabels=['Normal', 'High'], yticklabels=['Normal', 'High'])
+    plt.title('Confusion Matrix - Hybrid Threshold Evaluation', fontsize=14)
     plt.xlabel('Predicted State')
     plt.ylabel('Actual State')
     plt.savefig('plots/1_confusion_matrix.png', bbox_inches='tight')
     plt.close()
 
-    # --- Feature Importance ---
+    # --- 2. Feature Importance ---
     plt.figure(figsize=(10, 6))
     feature_imp = pd.DataFrame({'Importance': model.feature_importances_, 'Feature': feature_columns})
     feature_imp = feature_imp.sort_values(by="Importance", ascending=False)
     sns.barplot(x="Importance", y="Feature", data=feature_imp, palette="viridis")
-    plt.title('Feature Importance (What drives CO2 emissions?)', fontsize=14)
+    plt.title('Feature Importance', fontsize=14)
     plt.savefig('plots/2_feature_importance.png', bbox_inches='tight')
     plt.close()
 
-    # --- ROC Curve ---
+    # --- 3. ROC Curve ---
     plt.figure(figsize=(8, 6))
-    # Get probabilities for the positive class
-    y_prob = model.predict_proba(X_test_scaled)[:, 1]
-    fpr, tpr, _ = roc_curve(y_test, y_prob)
+    fpr, tpr, _ = roc_curve(y_test_binary, test_preds_binary)
     roc_auc = auc(fpr, tpr)
-    
     plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
@@ -78,25 +71,20 @@ def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test
     plt.savefig('plots/3_roc_curve.png', bbox_inches='tight')
     plt.close()
 
-    # --- Anomaly Detection Scatter Plot ---
+    # --- 4. Anomaly Scatter Plot ---
     plt.figure(figsize=(10, 6))
-    # Predict anomalies on the entire dataset for visualization
     X_all_scaled_numeric = scaler.transform(df_original[numeric_cols])
-
     X_all_scaled = df_original.copy()
     X_all_scaled[numeric_cols] = X_all_scaled_numeric
     X_all_scaled = X_all_scaled[feature_columns]
     
     df_plot = df_original.copy()
     df_plot['Anomaly_Status'] = anomaly_detector.predict(X_all_scaled)
-    
-    # Map 1 to 'Normal' and -1 to 'Anomaly'
     df_plot['Anomaly_Status'] = df_plot['Anomaly_Status'].map({1: 'Normal', -1: 'Anomaly'})
     
     sns.scatterplot(data=df_plot, x='fuel_flow', y='boiler_load', 
-                    hue='Anomaly_Status', palette={'Normal': '#2ecc71', 'Anomaly': '#e74c3c'}, 
-                    alpha=0.6, s=50)
-    plt.title('Anomaly Detection: Fuel Flow vs Boiler Load', fontsize=14)
+                    hue='Anomaly_Status', palette={'Normal': '#2ecc71', 'Anomaly': '#e74c3c'}, alpha=0.6, s=50)
+    plt.title('Anomaly Detection Watchdog', fontsize=14)
     plt.xlabel('Fuel Flow (tons/hr)')
     plt.ylabel('Boiler Load (MW)')
     plt.savefig('plots/4_anomaly_scatter.png', bbox_inches='tight')
@@ -105,7 +93,6 @@ def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test
     print("✅ All plots saved successfully in the 'plots/' directory!")
 
 def train_model(csv_path=None):
-    # 1. Load Data
     if csv_path and os.path.exists(csv_path):
         print(f"Loading data from {csv_path}")
         df = pd.read_csv(csv_path)
@@ -117,20 +104,14 @@ def train_model(csv_path=None):
 
     feature_columns = ['fuel_flow', 'boiler_load', 'ambient_temp', 'carbon_capture']
     X = df[feature_columns]
-    
-    # ---------------------------------------------------------
-    # DYNAMIC THRESHOLDING
-    # ---------------------------------------------------------
-    EMISSION_THRESHOLD = df['co2_emission'].median()
-    y = (df['co2_emission'] > EMISSION_THRESHOLD).astype(int)
+    y = df['co2_emission'] # REGRESSION: Predicting exact number
 
-    # 2. Split Data
+    # Threshold for Hybrid Evaluation
+    EMISSION_THRESHOLD = y.median()
+
     print("Splitting dataset 80/20...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # 3. Scale Features
     print("Scaling features...")
     scaler = StandardScaler()
     numeric_cols = ['fuel_flow', 'boiler_load', 'ambient_temp']
@@ -140,46 +121,43 @@ def train_model(csv_path=None):
     X_train_scaled[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
     X_test_scaled[numeric_cols] = scaler.transform(X_test[numeric_cols])
 
-    # 4. ENGINE 1: LightGBM Classifier
-    print("Training LightGBM Classifier...")
-    model = lgb.LGBMClassifier(n_estimators=200, learning_rate=0.05, max_depth=8, random_state=42)
-
-    # 5-Fold Stratified Cross-Validation
-    print("Performing 5-Fold Stratified Cross-Validation...")
-    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=kf, scoring='accuracy')
-    mean_cv_accuracy = cv_scores.mean()
-    std_cv_accuracy = cv_scores.std()
-
-    # Fit final model
+    # ENGINE 1: LightGBM REGRESSOR
+    print("Training LightGBM Regressor...")
+    model = lgb.LGBMRegressor(n_estimators=200, learning_rate=0.05, max_depth=8, random_state=42)
     model.fit(X_train_scaled, y_train)
+    
     train_preds = model.predict(X_train_scaled)
     test_preds = model.predict(X_test_scaled)
 
-    # 5. ENGINE 2: Isolation Forest (Anomaly Detection)
+    # Convert Regressor outputs to Classification for Evaluation plots
+    y_test_binary = (y_test > EMISSION_THRESHOLD).astype(int)
+    test_preds_binary = (test_preds > EMISSION_THRESHOLD).astype(int)
+
+    # ENGINE 2: Isolation Forest Anomaly Detector
     print("Training Isolation Forest Anomaly Detector...")
     anomaly_detector = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
     anomaly_detector.fit(X_train_scaled)
 
-    # 6. Generate Plots (Calling the function instead of defining it)
-    generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test, test_preds, feature_columns, numeric_cols, df, scaler)
+    # Generate Plots
+    generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df, scaler)
 
-    # 7. Compile Metrics
+    # Compile Hybrid Metrics
     metrics = {
-        "algorithm": "LightGBM Classifier + Isolation Forest",
-        "train_accuracy": round(float(accuracy_score(y_train, train_preds)), 4),
-        "test_accuracy": round(float(accuracy_score(y_test, test_preds)), 4),
-        "cv_mean_accuracy": round(float(mean_cv_accuracy), 4),
-        "cv_std_deviation": round(float(std_cv_accuracy), 4),
-        "train_f1_score": round(float(f1_score(y_train, train_preds)), 4),
-        "test_f1_score": round(float(f1_score(y_test, test_preds)), 4)
+        "algorithm": "Hybrid LGBM Regressor + Isolation Forest",
+        "train_r2": round(float(r2_score(y_train, train_preds)), 4),
+        "test_r2": round(float(r2_score(y_test, test_preds)), 4),
+        "train_mae": round(float(mean_absolute_error(y_train, train_preds)), 4),
+        "test_mae": round(float(mean_absolute_error(y_test, test_preds)), 4),
+        "train_rmse": round(float(np.sqrt(mean_squared_error(y_train, train_preds))), 4),
+        "test_rmse": round(float(np.sqrt(mean_squared_error(y_test, test_preds))), 4),
+        "test_accuracy": round(float(accuracy_score(y_test_binary, test_preds_binary)), 4),
+        "test_f1_score": round(float(f1_score(y_test_binary, test_preds_binary)), 4)
     }
 
     print("\n===== FINAL METRICS =====")
     for k, v in metrics.items():
         print(f"{k}: {v}")
 
-    # 8. Save Artifacts
     print("\nSaving artifacts...")
     joblib.dump(model, "model.pkl")
     joblib.dump(anomaly_detector, "anomaly_detector.pkl")
@@ -193,7 +171,7 @@ def train_model(csv_path=None):
     with open("metadata.json", "w") as f:
         json.dump(metrics, f, indent=4)
         
-    print("Training completed successfully!")
+    print("✅ Training completed successfully!")
 
 if __name__ == "__main__":
     train_model(csv_path=r"data\processed_synthetic_data_30days.csv")
