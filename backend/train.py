@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, roc_curve, auc, r2_score, mean_absolute_error, mean_squared_error
 from sklearn.ensemble import IsolationForest
 import lightgbm as lgb
@@ -30,7 +29,7 @@ def generate_synthetic_data(num_samples=2000):
         'co2_emission': co2_emission
     })
 
-def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df_original, scaler):
+def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df_original):
     """Generates and saves all essential machine learning visualizations."""
     print("\nGenerating evaluation plots...")
     os.makedirs("plots", exist_ok=True)
@@ -73,13 +72,11 @@ def generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binar
 
     # --- 4. Anomaly Scatter Plot ---
     plt.figure(figsize=(10, 6))
-    X_all_scaled_numeric = scaler.transform(df_original[numeric_cols])
-    X_all_scaled = df_original.copy()
-    X_all_scaled[numeric_cols] = X_all_scaled_numeric
-    X_all_scaled = X_all_scaled[feature_columns]
-    
+    # Data is already normalized [0,1] — use feature columns directly
+    X_all = df_original[feature_columns]
+
     df_plot = df_original.copy()
-    df_plot['Anomaly_Status'] = anomaly_detector.predict(X_all_scaled)
+    df_plot['Anomaly_Status'] = anomaly_detector.predict(X_all)
     df_plot['Anomaly_Status'] = df_plot['Anomaly_Status'].map({1: 'Normal', -1: 'Anomaly'})
     
     sns.scatterplot(data=df_plot, x='fuel_flow', y='boiler_load', 
@@ -112,14 +109,11 @@ def train_model(csv_path=None):
     print("Splitting dataset 80/20...")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print("Scaling features...")
-    scaler = StandardScaler()
+    # Features are already Min-Max normalized [0, 1] in the CSV — no scaling needed.
+    print("Skipping StandardScaler — features are already normalized [0, 1].")
     numeric_cols = ['fuel_flow', 'boiler_load', 'ambient_temp']
-    
     X_train_scaled = X_train.copy()
     X_test_scaled = X_test.copy()
-    X_train_scaled[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-    X_test_scaled[numeric_cols] = scaler.transform(X_test[numeric_cols])
 
     # ENGINE 1: LightGBM REGRESSOR
     print("Training LightGBM Regressor...")
@@ -139,7 +133,7 @@ def train_model(csv_path=None):
     anomaly_detector.fit(X_train_scaled)
 
     # Generate Plots
-    generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df, scaler)
+    generate_and_save_plots(model, anomaly_detector, X_test_scaled, y_test_binary, test_preds_binary, feature_columns, numeric_cols, df)
 
     # Compile Hybrid Metrics
     metrics = {
@@ -163,8 +157,8 @@ def train_model(csv_path=None):
     joblib.dump(anomaly_detector, "anomaly_detector.pkl")
     
     joblib.dump({
-        "scaler": scaler, 
-        "feature_columns": feature_columns, 
+        "scaler": None,  # No scaling needed — CSV features are already normalized [0, 1]
+        "feature_columns": feature_columns,
         "threshold": float(EMISSION_THRESHOLD)
     }, "preprocessor.joblib")
     

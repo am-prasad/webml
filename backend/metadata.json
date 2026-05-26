@@ -1,11 +1,11 @@
 {
     "algorithm": "Hybrid LGBM Regressor + Isolation Forest",
-    "train_r2": 0.6822,
-    "test_r2": 0.6746,
-    "train_mae": 1.2663,
-    "test_mae": 1.2852,
-    "train_rmse": 1.5089,
-    "test_rmse": 1.5313,
-    "test_accuracy": 0.7603,
-    "test_f1_score": 0.7835
+    "train_r2": 0.6823,
+    "test_r2": 0.6747,
+    "train_mae": 1.2662,
+    "test_mae": 1.2855,
+    "train_rmse": 1.5086,
+    "test_rmse": 1.5311,
+    "test_accuracy": 0.7608,
+    "test_f1_score": 0.7839
 }
