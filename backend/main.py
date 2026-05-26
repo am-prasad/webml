@@ -7,7 +7,7 @@ import numpy as np
 
 app = FastAPI(title="EcoGridAI", version="2.0.0")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["10.81.25.110:5500/frontend","*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 class PredictionInput(BaseModel):
     fuelflow: float
