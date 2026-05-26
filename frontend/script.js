@@ -113,14 +113,14 @@ async function handlePrediction(event) {
         if (data.status === "success") {
             const prediction = data.prediction;
 
-            
-            document.getElementById("predictionValue").textContent = prediction.toFixed(4) + "%";
+            // ✅ FIX: Display actual CO2 value in g/kWh, not percentage
+            document.getElementById("predictionValue").textContent = prediction.toFixed(2) + " g/kWh";
 
-            // Make gauge relative to 50% max limit
+            // Gauge shows percentage of 50 g/kWh maximum
             const percentage = Math.min((prediction / 50) * 100, 100);
             gaugeChart.data.datasets[0].data = [percentage, 100 - percentage];
             
-            
+            // ✅ Color the gauge based on emission level
             if (data.is_high_emission) {
                 gaugeChart.data.datasets[0].backgroundColor = ["#ff3333", "#0f1629"];
                 gaugeChart.data.datasets[0].borderColor = ["#ff0000", "#1a1f3a"];
@@ -130,7 +130,7 @@ async function handlePrediction(event) {
             }
             gaugeChart.update();
 
-            
+            // ✅ Show/hide anomaly alert
             const alertBox = document.getElementById("anomalyAlert");
             if (data.is_anomaly) {
                 alertBox.classList.remove("hidden");

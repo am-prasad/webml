@@ -15,12 +15,6 @@ class PredictionInput(BaseModel):
     ambient_temp: float
     capture_on: int
 
-NORMALIZATION_RANGES = { "fuelflow": (0, 200), "boilerload": (0, 500), "ambient_temp": (-20, 80) }
-
-def normalize_input(value: float, feature: str) -> float:
-    min_val, max_val = NORMALIZATION_RANGES[feature]
-    return float(np.clip((value - min_val) / (max_val - min_val), 0.0, 1.0))
-
 MODEL_PATH = "model.pkl"
 ANOMALY_PATH = "anomaly_detector.pkl"
 PREPROCESSOR_PATH = "preprocessor.joblib"
@@ -47,10 +41,12 @@ async def predict(input_data: PredictionInput):
         return {"error": "Models not loaded", "status": "failed"}
 
     try:
+        # ⚠️ FIX: Removed the normalize_input function here. 
+        # Pass the raw values directly to the dataframe!
         raw_data = {
-            "fuel_flow": normalize_input(input_data.fuelflow, "fuelflow"),
-            "boiler_load": normalize_input(input_data.boilerload, "boilerload"),
-            "ambient_temp": normalize_input(input_data.ambient_temp, "ambient_temp"),
+            "fuel_flow": input_data.fuelflow,
+            "boiler_load": input_data.boilerload,
+            "ambient_temp": input_data.ambient_temp,
             "carbon_capture": input_data.capture_on
         }
         
@@ -61,14 +57,15 @@ async def predict(input_data: PredictionInput):
         for col in feature_columns:
             df.at[0, col] = raw_data[col]
 
+        
         if scaler:
             numeric_cols = [c for c in ['fuel_flow', 'boiler_load', 'ambient_temp'] if c in df.columns]
             df[numeric_cols] = scaler.transform(df[numeric_cols])
 
-        # Engine 1: Predict exact CO2 Number
+        # Engine 1: Predict exact CO2 Regressive Number
         prediction = float(np.clip(model.predict(df)[0], 0.0, 50.0))
         
-        # Engine 2: Predict Anomaly (-1 means Anomaly, 1 means Normal)
+        # Engine 2: Predict Anomaly Watchdog (-1 means Anomaly, 1 means Normal)
         is_anomaly = anomaly_detector.predict(df)[0] == -1
         
         # Threshold Check for UI coloring
